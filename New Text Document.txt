@@ -1,0 +1,315 @@
+Below is **the same full deployment guide**, but rewritten to clearly explain **WHAT we did** and **WHY we did it** in each step — in simple, understandable terms.
+
+You can **copy & paste this into Google Docs**.
+
+---
+
+# **PHP (Laravel) App Deployment – What We Did & Why (Step-by-Step Explanation)**
+
+This explains every step we performed to deploy the **Hrmifly SaaS (Laravel) HRMS application** on CyberPanel/OpenLiteSpeed, along with the *purpose* of each step.
+
+---
+
+# **1. Created a Website in CyberPanel**
+
+### **What we did**
+
+* Opened CyberPanel → Websites → Create Website
+* Added the domain: `hrms.slateai.dev`
+* Selected PHP version 8.x
+
+### **Why we did it**
+
+CyberPanel needs a website entry so that:
+
+* it creates file directories under `/home/`
+* it generates a Linux user for the domain
+* it configures OpenLiteSpeed
+* it allows us to upload files, create database, SSL, etc.
+
+---
+
+# **2. Uploaded the PHP Application Code**
+
+### **What we did**
+
+* Uploaded the `.zip` file in File Manager
+* Extracted it inside `/home/hrms.slateai.dev/public_html/`
+* It created a folder: `HrmiflySaas-2.0.0`
+
+### **Why we did it**
+
+The extracted PHP files must exist inside the website directory so the server can execute them.
+
+---
+
+# **3. Installed Composer**
+
+### **What we did**
+
+We installed Composer manually:
+
+```bash
+cd /usr/local/bin
+php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+rm composer-setup.php
+composer --version
+```
+
+### **Why we did it**
+
+Composer is required to install PHP libraries used by Laravel.
+Without Composer, Laravel apps cannot run.
+
+---
+
+# **4. Installed Laravel Dependencies**
+
+### **What we did**
+
+Ran inside the project folder:
+
+```bash
+composer install
+```
+
+### **Why we did it**
+
+Laravel does not ship with all packages in the ZIP file.
+Composer installs:
+
+* vendor libraries
+* framework components
+* dependencies required to run the application
+
+---
+
+# **5. Fixed File Permissions**
+
+### **What we did**
+
+We changed owner and permissions:
+
+```bash
+chown -R hrmss4546:hrmss4546 /home/hrms.slateai.dev/public_html/HrmiflySaas-2.0.0
+chmod -R 775 storage
+chmod -R 775 bootstrap/cache
+```
+
+### **Why we did it**
+
+Because:
+
+* Files were extracted as **root**, not the domain user
+* Laravel requires `storage` & `bootstrap/cache` to be writable
+* Without permissions, Laravel throws 500 errors
+
+This step ensures the web server can read & write files properly.
+
+---
+
+# **6. Created MySQL Database & User**
+
+### **What we did**
+
+In CyberPanel → Create Database:
+
+* Database: `hrms_hrmsdb`
+* User: `hrms_hrmsuser`
+* Password: your chosen password
+
+### **Why we did it**
+
+Laravel needs:
+
+* a database for tables
+* a username/password to connect
+
+The installer uses this information to configure `.env`.
+
+---
+
+# **7. Updated the `.env` File**
+
+### What we did
+
+Opened the `.env` file:
+
+```bash
+nano .env
+```
+
+Updated these fields:
+
+```
+APP_URL=https://hrms.slateai.dev
+
+DB_CONNECTION=mysql
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=hrms_hrmsdb
+DB_USERNAME=hrms_hrmsuser
+DB_PASSWORD=yourpassword
+```
+
+### **Why we did it**
+
+The `.env` file tells Laravel:
+
+* what URL the app is running on
+* which database to use
+* which user/password to connect with
+
+This is Laravel’s main configuration file.
+
+---
+
+# **8. Cleared Laravel Cache**
+
+### **What we did**
+
+Ran:
+
+```bash
+php artisan config:clear
+php artisan cache:clear
+php artisan route:clear
+php artisan view:clear
+php artisan optimize
+```
+
+### **Why we did it**
+
+Laravel stores cached:
+
+* configuration
+* routes
+* views
+
+Old cache can break the app.
+Clearing + optimizing ensures Laravel loads fresh configuration.
+
+---
+
+# **9. Ran Database Migrations**
+
+### **What we did**
+
+```bash
+php artisan migrate --force
+```
+
+Then:
+
+```bash
+php artisan db:seed --force
+```
+
+### **Why we did it**
+
+Migration:
+
+* Creates all database tables needed by the app
+
+Seeding:
+
+* Inserts default data such as admin roles, settings, modules, etc.
+
+Without these, the app cannot run.
+
+---
+
+# **10. Pointed OpenLiteSpeed Document Root to `/public`**
+
+### **What we did**
+
+In OpenLiteSpeed Admin:
+
+* Virtual Hosts → hrms.slateai.dev → General
+* Changed Document Root to:
+
+```
+/home/hrms.slateai.dev/public_html/HrmiflySaas-2.0.0/public
+```
+
+Performed a **graceful restart**.
+
+### **Why we did it**
+
+Laravel apps must always serve the `/public` folder — not the root folder.
+
+The `/public` directory:
+
+* contains `index.php`
+* loads the framework
+* protects sensitive files from being exposed
+
+Without this, the app shows 404 or downloads PHP files.
+
+---
+
+# **11. Completed the Web Installer**
+
+### **What we did**
+
+Opened:
+
+```
+https://hrms.slateai.dev/install/environment
+```
+
+Entered:
+
+* Host: `localhost`
+* DB User: `hrms_hrmsuser`
+* Password: the DB password
+* DB Name: `hrms_hrmsdb`
+
+### **Why we did it**
+
+Many SaaS Laravel scripts include their own installer.
+This step:
+
+* writes database settings
+* completes application setup
+* generates necessary environment configs
+
+---
+
+# **12. Application Successfully Loaded**
+
+### **What we did**
+
+Opened:
+
+```
+https://hrms.slateai.dev
+```
+
+The application loaded without errors.
+
+### **Why it worked**
+
+Because:
+
+* composer installed dependencies
+* database migrations were run
+* permissions were fixed
+* `.env` was correctly configured
+* document root pointed to `/public`
+
+---
+
+# **If you want, I can also prepare:**
+
+✔ A **short version**
+✔ A **diagram flow**
+✔ A **ready Google Docs formatted version**
+✔ A **version for Node.js, WordPress, Docker, or EC2 deployment**
+
+Just tell me:
+
+**“convert this to Google Docs format”**
+or
+**“give me a short version”**
